@@ -30,6 +30,11 @@ assert_contains() {
   case "$2" in *"$3"*) ok "$1" ;; *) bad "$1 -- expected [$3] in: $(echo "$2" | head -c 300)" ;; esac
 }
 
+# assert_eq <label> <expected> <actual>
+assert_eq() {
+  if [ "$3" = "$2" ]; then ok "$1"; else bad "$1 -- expected $2, got $3"; fi
+}
+
 say "smoke-legacy against ${BASE}"
 
 say "waiting for ORDS + module config (up to 15 min on first boot)..."
@@ -66,14 +71,14 @@ assert_contains "promo price truncated" "$body" '"unit_price":19.99'
 # 5. unknown product -> 404
 code=$(curl -s -o /dev/null -w '%{http_code}' \
   "${BASE}/pricing/quote?customer_id=1&product_id=999999&qty=1")
-[ "$code" = "404" ] && ok "quote 404 on unknown product" || bad "expected 404, got $code"
+assert_eq "quote 404 on unknown product" 404 "$code"
 
 # 6. place order: customer 1, product 1000 qty 5 -> 17.99*5 = 89.95
 body=$(curl -s -X POST -H 'Content-Type: application/json' \
   -d '{"customer_id":1,"lines":[{"product_id":1000,"qty":5}]}' "${BASE}/orders")
 assert_contains "place order total" "$body" '"total":89.95'
 order_id=$(echo "$body" | grep -o '"order_id":[0-9]*' | grep -o '[0-9]*')
-[ -n "$order_id" ] && ok "order id returned ($order_id)" || bad "no order_id in: $body"
+if [ -n "$order_id" ]; then ok "order id returned ($order_id)"; else bad "no order_id in: $body"; fi
 
 # 7. read the order back
 body=$(curl -s "${BASE}/orders/${order_id}")
@@ -85,28 +90,31 @@ body=$(curl -s -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
   -d '{"customer_id":3,"lines":[{"product_id":1000,"qty":100}]}' "${BASE}/orders")
 code=$(echo "$body" | tail -1)
 assert_contains "credit exceeded error code" "$body" 'ORA-20001'
-[ "$code" = "422" ] && ok "credit exceeded -> 422" || bad "expected 422, got $code"
+assert_eq "credit exceeded -> 422" 422 "$code"
 
 # 9. insufficient stock: product 1003 has 5 on hand -> 409 / ORA-20002
 body=$(curl -s -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
   -d '{"customer_id":1,"lines":[{"product_id":1003,"qty":100}]}' "${BASE}/orders")
 code=$(echo "$body" | tail -1)
 assert_contains "insufficient stock error code" "$body" 'ORA-20002'
-[ "$code" = "409" ] && ok "insufficient stock -> 409" || bad "expected 409, got $code"
+assert_eq "insufficient stock -> 409" 409 "$code"
 
 # 10. statements run: fixed seed guarantees orders in 2026-05
 body=$(curl -s -X POST -H 'Content-Type: application/json' \
   -d '{"period":"2026-05"}' "${BASE}/statements/run")
 assert_contains "statements run period" "$body" '"period":"2026-05"'
-echo "$body" | grep -qE '"statements":[1-9][0-9]*' \
-  && ok "statements produced (>0)" || bad "no statements in: $body"
+if echo "$body" | grep -qE '"statements":[1-9][0-9]*'; then
+  ok "statements produced (>0)"
+else
+  bad "no statements in: $body"
+fi
 
 # 11. bad period -> 400 / ORA-20003
 body=$(curl -s -w '\n%{http_code}' -X POST -H 'Content-Type: application/json' \
   -d '{"period":"2007-13"}' "${BASE}/statements/run")
 code=$(echo "$body" | tail -1)
 assert_contains "bad period error code" "$body" 'ORA-20003'
-[ "$code" = "400" ] && ok "bad period -> 400" || bad "expected 400, got $code"
+assert_eq "bad period -> 400" 400 "$code"
 
 say ""
 say "smoke-legacy: ${PASS} passed, ${FAIL} failed"
