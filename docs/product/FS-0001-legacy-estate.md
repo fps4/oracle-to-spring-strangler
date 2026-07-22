@@ -6,7 +6,7 @@ owners: [architect]
 related:
   - docs/product/00-product-intent.md
   - docs/design/decisions/0005-ords-facade-and-nginx-router.md
-maestro:
+spec:
   feature: legacy-estate
   kind: functional_spec
   summary: |

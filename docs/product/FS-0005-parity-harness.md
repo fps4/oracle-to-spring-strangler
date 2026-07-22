@@ -7,7 +7,7 @@ related:
   - docs/product/FS-0001-legacy-estate.md
   - docs/product/FS-0003-target-service.md
   - docs/product/FS-0004-strangler-routing.md
-maestro:
+spec:
   feature: parity-harness
   kind: functional_spec
   summary: |

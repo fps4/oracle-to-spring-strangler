@@ -7,7 +7,7 @@ related:
   - docs/product/00-product-intent.md
   - docs/design/decisions/0002-one-domain-one-service.md
   - docs/design/decisions/0003-three-way-plsql-placement.md
-maestro:
+spec:
   feature: target-service
   kind: functional_spec
   summary: |
@@ -32,8 +32,8 @@ The architect question in every one of these engagements is *where does the
 PL/SQL logic go*. Implementing all three answers in one small service — with
 the trade-off written down per module — demonstrates migration judgment that a
 single-approach port cannot. It also converts the owner's Spring Boot claim
-from design-review level to honestly-demoable (the wiki guide's §8 build,
-subsumed here with a better story).
+from design-review level to honestly-demoable — built by the owner's own
+hands, at stated learning depth (ADR-0004).
 
 ## Scope
 

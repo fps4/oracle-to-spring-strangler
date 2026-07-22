@@ -9,12 +9,11 @@ owners: [architect]
 
 ## Context
 
-The repo exists to back interview claims. The owner's calibrated position (see
-wiki `spring-boot-for-architects.md` §9) is: modernization architecture at
-senior depth, Spring Boot at governed-teams + hands-on-learning depth, built
-AI-assisted. Any drift toward implying production history, load-tested scale,
-or veteran Java fluency would convert an asset into a liability the first time
-an interviewer probes.
+The repo exists to back interview claims. The owner's calibrated position is:
+modernization architecture at senior depth, Spring Boot at governed-teams +
+hands-on-learning depth, built AI-assisted. Any drift toward implying
+production history, load-tested scale, or veteran Java fluency would convert
+an asset into a liability the first time an interviewer probes.
 
 ## Decision
 

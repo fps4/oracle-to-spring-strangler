@@ -6,7 +6,7 @@ owners: [architect]
 related:
   - docs/design/decisions/0001-local-first-runtime.md
   - docs/product/FS-0005-parity-harness.md
-maestro:
+spec:
   feature: infra-and-ci
   kind: functional_spec
   summary: |

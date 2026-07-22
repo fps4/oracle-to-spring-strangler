@@ -7,7 +7,7 @@ related:
   - docs/product/FS-0002-ai-assisted-assessment.md
   - docs/product/FS-0003-target-service.md
   - docs/design/decisions/0005-ords-facade-and-nginx-router.md
-maestro:
+spec:
   feature: strangler-routing
   kind: functional_spec
   summary: |

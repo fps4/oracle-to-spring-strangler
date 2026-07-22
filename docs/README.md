@@ -45,9 +45,8 @@ C4 diagrams land under `design/` in M3 (FS-0006).
 - [`delivery/roadmap/README.md`](./delivery/roadmap/README.md) — milestones
   M0–M3, one weekend each, exit demos per milestone.
 
-## Related (outside this repo)
+## Positioning
 
-- wiki `job-search-and-upskilling/upskilling-guides/spring-boot-for-architects.md`
-  — the learning track this repo's build subsumes (§8)
-- wiki `job-search-and-upskilling/research/05-demo-repos.md` — sibling demo
-  repos (streaming / gateway); this repo covers the modernization story
+This repo covers the *modernization* story (assess → waves → parity →
+decommission). Streaming and API-platform depth are separate demo tracks —
+deliberately not mixed in here (ADR-0002).

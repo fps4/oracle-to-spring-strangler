@@ -6,7 +6,7 @@ owners: [architect]
 related:
   - docs/overview.md
   - docs/delivery/roadmap/README.md
-maestro:
+spec:
   feature: product-intent
   kind: product_intent
   summary: |
@@ -27,9 +27,7 @@ maestro:
 2. **Interviewers** in technical screens — the repo is a 15-minute guided
    walkthrough that answers "have you actually done this?" with running code.
 3. **The owner** — the build itself is the upskilling vehicle that converts
-   Spring Boot from design-review level to honestly-demoable
-   (see wiki `upskilling-guides/spring-boot-for-architects.md` §8; this repo
-   subsumes that exercise).
+   Spring Boot from design-review level to honestly-demoable.
 
 ## The problem it solves
 
@@ -65,9 +63,8 @@ Plus reviewable IaC and CI (FS-0006) — local-first, cloud-optional.
 - Not a microservices showcase — one service, by decision (ADR-0002).
 - Not a mainframe demo — the owner's authentic wedge is the Oracle side;
   COBOL cosplay would undermine the honesty positioning.
-- Not a replacement for `event-driven-payments-platform` /
-  `multi-cloud-api-gateway-pattern` (wiki `research/05-demo-repos.md`) — those
-  evidence streaming/gateway depth; this evidences the modernization job.
+- Not a streaming or API-platform showcase — those are separate demo tracks;
+  this repo evidences the modernization job.
 
 ## Success criteria
 

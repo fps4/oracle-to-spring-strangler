@@ -7,7 +7,7 @@ related:
   - docs/product/00-product-intent.md
   - docs/product/FS-0001-legacy-estate.md
   - docs/design/decisions/0004-honesty-and-provenance.md
-maestro:
+spec:
   feature: ai-assisted-assessment
   kind: functional_spec
   summary: |
@@ -59,8 +59,8 @@ engagement would produce on day one.
 
 ## Out of scope
 
-- A reusable assessment *product* or framework (that ambition belongs to
-  maestro, not this lab).
+- A reusable assessment *product* or framework (a separate ambition, out of
+  scope for this lab).
 - Assessment of code outside `legacy/`.
 - Automated effort-estimation tooling (estimates are architect judgment,
   agent-drafted).

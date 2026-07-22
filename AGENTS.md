@@ -1,7 +1,6 @@
 # AGENTS.md
 
-Operating rules for agents (Claude Code and maestro-directed) working in this
-repo.
+Operating rules for coding agents working in this repo.
 
 ## What this repo is
 
