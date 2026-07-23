@@ -1,0 +1,52 @@
+# =====================================================================
+# waves.yml -- THE single source of cutover truth (FS-0004).
+#
+# A migration wave is a PR that flips `backend` entries here from
+# legacy to target; rollback is a git revert of that PR. The nginx
+# route config is GENERATED from this file:
+#
+#     make router-config        # regenerates strangler/nginx/default.conf
+#
+# CI fails if the committed config drifts from this file. Regenerating
+# from an unchanged waves.yml is a no-op (FS-0004 acceptance).
+#
+# Schema note: parsed by strangler/generate_router_config.py, which
+# reads a deliberately constrained YAML subset -- keep the two-space
+# indentation and `key: value` shape exactly as below.
+#
+# Wave sequencing and gates: assessment/wave-plan.md. A wave may be
+# marked cut-over only with parity evidence (FS-0005); wave 1 in M1
+# carries retroactive evidence, produced in M2 per the roadmap.
+# =====================================================================
+
+router:
+  listen: 8080
+  legacy_upstream: http://ords:8080/ords/legacy
+  target_upstream: http://pricing-service:8080/api
+
+waves:
+  - wave: 1
+    name: pricing-quote-to-target
+    status: planned
+    evidence: null
+    endpoints:
+      - path: /api/pricing/quote
+        backend: legacy
+
+  - wave: 2
+    name: orders-to-target
+    status: planned
+    evidence: null
+    endpoints:
+      # prefix route: also covers GET /api/orders/{id} -- the read
+      # flips together with the write (wave-plan.md, wave 2 scope)
+      - path: /api/orders
+        backend: legacy
+
+  - wave: 3
+    name: statements-to-retained-tier
+    status: planned
+    evidence: null
+    endpoints:
+      - path: /api/statements/run
+        backend: legacy
