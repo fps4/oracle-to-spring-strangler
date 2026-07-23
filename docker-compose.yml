@@ -1,0 +1,77 @@
+# =====================================================================
+# oracle-to-spring-strangler -- canonical local runtime (ADR-0001).
+# M0 scope: legacy estate only (Oracle XE + ORDS). The strangler router,
+# pricing-service and PostgreSQL join in M1 (FS-0003/0004).
+#
+# Lab credentials only -- this stack holds fictional seed data and runs
+# on a laptop; do not reuse these passwords anywhere real (ADR-0004).
+#
+# Resources: the Oracle XE image is heavy -- allow ~3 GB image pull,
+# ~2.5 GB RAM for the oracle container, first boot takes several minutes.
+# amd64-only image: on Apple Silicon use a remote amd64 DOCKER_HOST or
+# Docker Desktop Rosetta emulation (slower).
+# =====================================================================
+services:
+
+  oracle:
+    image: gvenzl/oracle-xe:21.3.0-slim
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-LabSys#2026}
+      APP_USER: legacy
+      APP_USER_PASSWORD: ${LEGACY_PASSWORD:-LabLegacy#2026}
+    ports:
+      - "1521:1521"
+    volumes:
+      - ./legacy/db/init:/container-entrypoint-initdb.d:ro
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 60
+      start_period: 180s
+
+  ords:
+    image: container-registry.oracle.com/database/ords:latest
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-LabSys#2026}
+      DB_HOST: oracle
+      DB_SERVICE: XEPDB1
+    entrypoint: ["/bin/bash", "/ords-entrypoint.sh"]
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./legacy/ords/ords-entrypoint.sh:/ords-entrypoint.sh:ro
+      - ords-config:/etc/ords/config
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:8080/ords/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
+  # one-shot: defines the LEGACY REST modules once ORDS has installed
+  # its PL/SQL API into the database (see configure-ords.sh for why
+  # this cannot be a DB init script)
+  ords-config:
+    image: gvenzl/oracle-xe:21.3.0-slim   # reused for its sqlplus client
+    depends_on:
+      oracle:
+        condition: service_healthy
+      ords:
+        condition: service_started
+    environment:
+      DB_HOST: oracle
+      DB_SERVICE: XEPDB1
+      LEGACY_PASSWORD: ${LEGACY_PASSWORD:-LabLegacy#2026}
+    entrypoint: ["/bin/bash", "/ords-config/configure-ords.sh"]
+    volumes:
+      - ./legacy/ords:/ords-config:ro
+    restart: "no"
+
+volumes:
+  oracle-data:
+  ords-config:

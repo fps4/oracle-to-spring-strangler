@@ -38,11 +38,23 @@ strangler proxy, the Spring service, and PostgreSQL. Terraform for EKS/RDS
 exists as reviewable IaC (`infra/`), applied only on demand — no always-on
 cloud cost.
 
+**Resource note:** the Oracle XE image is heavy — budget ~3 GB image pull,
+~2.5 GB RAM for the container, several minutes on first boot. The image is
+amd64-only; on Apple Silicon use Docker Desktop's Rosetta emulation or a
+remote amd64 `DOCKER_HOST`.
+
+```bash
+make up            # oracle + ords (+ target stack from M1)
+make smoke-legacy  # verify the four legacy endpoints, incl. the TRUNC quirk
+make clean         # wipe volumes; next `make up` re-seeds deterministically
+```
+
 ## Status
 
-Spec-first. Product intent and functional specs are locked before code — see
-[`docs/delivery/roadmap/README.md`](docs/delivery/roadmap/README.md) for
-milestones M0–M3.
+**M0 in progress** — legacy estate (FS-0001) and AI-assisted assessment
+(FS-0002) built; M1–M3 (target service, strangler waves, parity, infra) are
+spec-only. See [`docs/delivery/roadmap/README.md`](docs/delivery/roadmap/README.md)
+for milestones M0–M3.
 
 ## License
 

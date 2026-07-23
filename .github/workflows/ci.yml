@@ -1,0 +1,30 @@
+# CI skeleton (M0 repo hygiene). Grows per roadmap:
+#   M1: build + ./mvnw verify (Testcontainers) for services/pricing-service
+#   M2: parity harness on PRs touching services/ or strangler/ (FS-0005)
+#   M3: terraform validate + plan-only job (ADR-0001)
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose
+        run: docker compose config -q
+
+      - name: Shellcheck scripts
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck scripts/*.sh legacy/ords/*.sh
+
+      - name: SQL init scripts are ASCII-safe and ordered
+        run: |
+          ls legacy/db/init/ | sort -c
+          ! grep -rlP '[^\x00-\x7F]' legacy/db/init/ || \
+            (echo 'non-ASCII bytes in init SQL (breaks across DB charsets)'; exit 1)
