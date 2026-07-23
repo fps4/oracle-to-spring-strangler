@@ -27,11 +27,14 @@ router:
 waves:
   - wave: 1
     name: pricing-quote-to-target
-    status: planned
-    evidence: null
+    status: cut-over
+    # evidence is retroactive by design: the parity harness is M2 scope
+    # (roadmap M1/M2; FS-0005 "retro-evidence for wave 1"). Until then
+    # the gate stands on the golden-master suite + smoke anchor parity.
+    evidence: retroactive-M2 (FS-0005; interim: PricingServiceTest golden masters + smoke-m1 anchors)
     endpoints:
       - path: /api/pricing/quote
-        backend: legacy
+        backend: target
 
   - wave: 2
     name: orders-to-target
