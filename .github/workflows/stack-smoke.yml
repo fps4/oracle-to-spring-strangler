@@ -4,6 +4,14 @@
 #
 # Triggers: manual dispatch, or add the `stack-smoke` label to a PR.
 # Not on every push -- a clean first boot costs ~5-10 min on ds1.
+#
+# Containerized-runner note: the runner on ds1 runs inside a container,
+# so its workspace path does not exist on the HOST filesystem -- but
+# `docker compose` talks to the host daemon, which resolves bind-mount
+# sources against the host. The "Mirror" step below copies the
+# workspace to the same absolute path on the host (detected via nonce,
+# no-op on a bare-metal runner), and the smoke scripts run in
+# --network host containers so localhost ports resolve.
 name: stack-smoke
 
 on:
@@ -28,14 +36,33 @@ jobs:
       - name: Clean slate (re-runs DB init scripts)
         run: docker compose down -v --remove-orphans
 
+      - name: Mirror workspace to the host path (containerized runner)
+        run: |
+          nonce="$RANDOM$RANDOM$$"
+          echo "$nonce" > .runner-nonce
+          if docker run --rm -v /:/host alpine:3.20 \
+               sh -c "grep -q $nonce '/host$PWD/.runner-nonce' 2>/dev/null"; then
+            echo "workspace is visible on the host -- no mirror needed"
+            echo "MIRRORED=false" >> "$GITHUB_ENV"
+          else
+            echo "runner is containerized -- mirroring to host:$PWD"
+            docker run --rm -v /:/host -v "$PWD":/src:ro alpine:3.20 \
+              sh -c "rm -rf '/host$PWD' && mkdir -p '/host$PWD' && cp -a /src/. '/host$PWD/'"
+            echo "MIRRORED=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Boot the full stack
         run: docker compose up -d --build
 
       - name: Legacy smoke (19 assertions, waits for ORDS)
-        run: ORDS_URL=http://localhost:8081 bash scripts/smoke-legacy.sh
+        run: |
+          docker run --rm --network host -v "$PWD":/repo -w /repo alpine:3.20 \
+            sh -c 'apk add -q bash curl && bash scripts/smoke-legacy.sh'
 
       - name: M1 smoke (target + router)
-        run: TARGET_URL=http://localhost:8082 ROUTER_URL=http://localhost:8080 bash scripts/smoke-m1.sh
+        run: |
+          docker run --rm --network host -v "$PWD":/repo -w /repo alpine:3.20 \
+            sh -c 'apk add -q bash curl && bash scripts/smoke-m1.sh'
 
       - name: Container status on failure
         if: failure()
@@ -45,4 +72,8 @@ jobs:
 
       - name: Teardown
         if: always()
-        run: docker compose down -v --remove-orphans
+        run: |
+          docker compose down -v --remove-orphans
+          if [ "${MIRRORED:-false}" = "true" ]; then
+            docker run --rm -v /:/host alpine:3.20 sh -c "rm -rf '/host$PWD'"
+          fi
