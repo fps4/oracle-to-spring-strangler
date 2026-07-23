@@ -1,5 +1,4 @@
-# CI skeleton (M0 repo hygiene). Grows per roadmap:
-#   M1: build + ./mvnw verify (Testcontainers) for services/pricing-service
+# CI (M0 hygiene + M1 build/verify). Grows per roadmap:
 #   M2: parity harness on PRs touching services/ or strangler/ (FS-0005)
 #   M3: terraform validate + plan-only job (ADR-0001)
 name: ci
@@ -10,6 +9,36 @@ on:
   pull_request:
 
 jobs:
+  # FS-0003 DoD: ./mvnw verify green (unit + slice + Testcontainers;
+  # Docker is present on ubuntu-latest runners)
+  pricing-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and verify
+        working-directory: services/pricing-service
+        run: ./mvnw -B verify
+
+  # FS-0004 acceptance: routing is fully determined by waves.yml --
+  # regenerating the committed nginx config must be a no-op
+  router-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerate router config from waves.yml
+        run: python3 strangler/generate_router_config.py
+
+      - name: Committed config matches waves.yml
+        run: git diff --exit-code -- strangler/nginx/
+
   hygiene:
     runs-on: ubuntu-latest
     steps:

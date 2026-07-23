@@ -43,8 +43,10 @@ the interview walkthrough.
 3. **Unified API surface**: consumers call `http://localhost:8080/api/...`;
    whether ORDS or Spring answers is invisible except for an
    `X-Served-By: legacy|target` debug header (demo affordance).
-4. **Wave 1** (M1): `pricing/quote` → target. **Wave 2** (M2): `orders` →
-   target. `statements/run` remains on the retained-PL/pgSQL path via the
+4. **Wave 1** (M1): `pricing/quote` → target. **Wave 2** (M2): `orders`
+   **and `orders/{id}`** → target (the read flips with the write:
+   read-after-write coherence — see amendment note below).
+   `statements/run` remains on the retained-PL/pgSQL path via the
    target service (its "cutover" is the wrapper, per ADR-0003).
 5. **Rollback drill**: one documented, executed rollback (wave flipped back,
    header proves it, commit history shows revert) — kept in the history as an
@@ -76,3 +78,14 @@ the interview walkthrough.
 - Wave 1 and wave 2 cut over as PRs whose diff is essentially the `waves.yml`
   change + parity evidence link.
 - The rollback exhibit exists and is referenced from the walkthrough.
+
+## Amendments
+
+- **2026-07-23 (M1 build): four routed endpoints, not three.** The
+  original scope listed three endpoints; the dependency map documents a
+  fourth, `GET /orders/{id}` ([E23], [E24]), which the wave plan flagged
+  ("it must be routed by `waves.yml` like everything else or it silently
+  pins ORDS alive forever") and the M0 architect review endorsed. Scope
+  item 4 now flips it with wave 2 alongside `POST /orders` — same
+  tables, read-after-write coherence. Mechanically both live under one
+  `/api/orders` prefix route in `waves.yml`.

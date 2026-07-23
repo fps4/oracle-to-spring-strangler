@@ -1,0 +1,47 @@
+# pricing-service configuration. Default profile = local-first
+# (ADR-0001): no auth, datasource from compose env or localhost.
+spring:
+  application:
+    name: pricing-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/pricing}
+    username: ${SPRING_DATASOURCE_USERNAME:pricing}
+    password: ${SPRING_DATASOURCE_PASSWORD:LabPricing#2026}
+  jackson:
+    property-naming-strategy: SNAKE_CASE   # legacy wire contract is snake_case (BR-API-01)
+  mvc:
+    problemdetails:
+      enabled: true                        # framework errors as RFC 7807 too
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8080
+  shutdown: graceful                       # FS-0003 scope 6
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true                      # liveness/readiness groups (K8s-ready, M3)
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
+---
+# `oauth2` profile: resource server validating JWTs against a dev
+# tenant. Issuer configurable; NOT active in the default local run.
+spring:
+  config:
+    activate:
+      on-profile: oauth2
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OAUTH2_ISSUER_URI:https://dev-tenant.example.invalid/}

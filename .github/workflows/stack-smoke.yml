@@ -1,0 +1,48 @@
+# Full-stack verification on the self-hosted amd64 runner (label: ds1).
+# The Oracle XE image is amd64-only, so hosted runners can't run the
+# legacy half of the stack; ds1 can (ADR-0001 canonical runtime).
+#
+# Triggers: manual dispatch, or add the `stack-smoke` label to a PR.
+# Not on every push -- a clean first boot costs ~5-10 min on ds1.
+name: stack-smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: stack-smoke-ds1       # one stack owns the ports at a time
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'stack-smoke'
+    runs-on: [self-hosted, ds1]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clean slate (re-runs DB init scripts)
+        run: docker compose down -v --remove-orphans
+
+      - name: Boot the full stack
+        run: docker compose up -d --build
+
+      - name: Legacy smoke (19 assertions, waits for ORDS)
+        run: ORDS_URL=http://localhost:8081 bash scripts/smoke-legacy.sh
+
+      - name: M1 smoke (target + router)
+        run: TARGET_URL=http://localhost:8082 ROUTER_URL=http://localhost:8080 bash scripts/smoke-m1.sh
+
+      - name: Container status on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail 100 pricing-service router
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v --remove-orphans

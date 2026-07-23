@@ -44,17 +44,25 @@ amd64-only; on Apple Silicon use Docker Desktop's Rosetta emulation or a
 remote amd64 `DOCKER_HOST`.
 
 ```bash
-make up            # oracle + ords (+ target stack from M1)
-make smoke-legacy  # verify the four legacy endpoints, incl. the TRUNC quirk
+make up            # full stack: oracle + ords + postgres + pricing-service + router
+make smoke         # legacy anchors (19 checks) + target/router checks (M1)
+make verify        # pricing-service test suite (Java 21 + Docker for Testcontainers)
 make clean         # wipe volumes; next `make up` re-seeds deterministically
 ```
 
+One public port: consumers call `http://localhost:8080/api/...` and the
+nginx router answers from whichever stack [`strangler/waves.yml`](strangler/waves.yml)
+routes to — the `X-Served-By: legacy|target` header says which. A migration
+wave is a PR that edits `waves.yml`; rollback is a git revert (FS-0004).
+Direct debug ports: ORDS `8081`, pricing-service `8082`.
+
 ## Status
 
-**M0 in progress** — legacy estate (FS-0001) and AI-assisted assessment
-(FS-0002) built; M1–M3 (target service, strangler waves, parity, infra) are
-spec-only. See [`docs/delivery/roadmap/README.md`](docs/delivery/roadmap/README.md)
-for milestones M0–M3.
+**M1 in progress** — M0 (legacy estate FS-0001, assessment FS-0002) merged;
+M1 adds the target service (FS-0003: three-way PL/SQL placement, Flyway,
+Testcontainers) and the strangler router (FS-0004), with wave 1
+(`pricing/quote` → target) cut over as its own PR. M2–M3 (parity harness,
+infra) are spec-only. See [`docs/delivery/roadmap/README.md`](docs/delivery/roadmap/README.md).
 
 ## License
 
