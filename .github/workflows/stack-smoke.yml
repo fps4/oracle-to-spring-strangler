@@ -1,17 +1,14 @@
-# Full-stack verification on the self-hosted amd64 runner (label: ds1).
-# The Oracle XE image is amd64-only, so hosted runners can't run the
-# legacy half of the stack; ds1 can (ADR-0001 canonical runtime).
+# Full-stack verification: boot the whole compose stack (Oracle XE +
+# ORDS, PostgreSQL + pricing-service, the strangler router) and run
+# both smoke suites against it.
+#
+# Runs on a GitHub-hosted runner. This repository is public, so a pull
+# request runs code nobody has reviewed yet, and that code must never
+# reach a self-hosted runner. ubuntu-latest is amd64, which the Oracle
+# XE image needs.
 #
 # Triggers: manual dispatch, or add the `stack-smoke` label to a PR.
-# Not on every push -- a clean first boot costs ~5-10 min on ds1.
-#
-# Containerized-runner note: the runner on ds1 runs inside a container,
-# so its workspace path does not exist on the HOST filesystem -- but
-# `docker compose` talks to the host daemon, which resolves bind-mount
-# sources against the host. The "Mirror" step below copies the
-# workspace to the same absolute path on the host (detected via nonce,
-# no-op on a bare-metal runner), and the smoke scripts run in
-# --network host containers so localhost ports resolve.
+# Not on every push -- a clean first boot of Oracle XE takes minutes.
 name: stack-smoke
 
 on:
@@ -19,8 +16,11 @@ on:
   pull_request:
     types: [labeled]
 
+permissions:
+  contents: read
+
 concurrency:
-  group: stack-smoke-ds1       # one stack owns the ports at a time
+  group: stack-smoke-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -28,59 +28,26 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.label.name == 'stack-smoke'
-    runs-on: [self-hosted, ds1]
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-
-      - name: Clean slate (re-runs DB init scripts)
-        run: docker compose down -v --remove-orphans
-
-      - name: Mirror workspace to the host path (containerized runner)
-        # NB: a bind mount of $PWD cannot carry the files out -- the
-        # daemon resolves bind sources on the HOST, where the runner's
-        # workspace doesn't exist. Stream a tar over stdin instead.
-        run: |
-          nonce="$RANDOM$RANDOM$$"
-          echo "$nonce" > .runner-nonce
-          if docker run --rm -v /:/host alpine:3.20 \
-               sh -c "grep -q $nonce '/host$PWD/.runner-nonce' 2>/dev/null"; then
-            echo "workspace is visible on the host -- no mirror needed"
-            echo "MIRRORED=false" >> "$GITHUB_ENV"
-          else
-            echo "runner is containerized -- streaming workspace to host:$PWD"
-            tar -C "$PWD" -cf - . | docker run --rm -i -v /:/host alpine:3.20 \
-              sh -c "rm -rf '/host$PWD' && mkdir -p '/host$PWD' && tar -C '/host$PWD' -xf -"
-            # fail loudly if the mirror is wrong rather than letting the
-            # daemon auto-create bind sources as empty directories
-            docker run --rm -v /:/host alpine:3.20 \
-              sh -c "grep -q $nonce '/host$PWD/.runner-nonce' && test -f '/host$PWD/strangler/nginx/default.conf'"
-            echo "MIRRORED=true" >> "$GITHUB_ENV"
-          fi
 
       - name: Boot the full stack
         run: docker compose up -d --build
 
       - name: Legacy smoke (19 assertions, waits for ORDS)
-        run: |
-          docker run --rm --network host -v "$PWD":/repo -w /repo alpine:3.20 \
-            sh -c 'apk add -q bash curl && bash scripts/smoke-legacy.sh'
+        run: bash scripts/smoke-legacy.sh
 
       - name: M1 smoke (target + router)
-        run: |
-          docker run --rm --network host -v "$PWD":/repo -w /repo alpine:3.20 \
-            sh -c 'apk add -q bash curl && bash scripts/smoke-m1.sh'
+        run: bash scripts/smoke-m1.sh
 
       - name: Container status on failure
         if: failure()
         run: |
-          docker compose ps
-          docker compose logs --tail 100 pricing-service router
+          docker compose ps -a
+          docker compose logs --tail 100 oracle ords ords-config pricing-service router
 
       - name: Teardown
         if: always()
-        run: |
-          docker compose down -v --remove-orphans
-          if [ "${MIRRORED:-false}" = "true" ]; then
-            docker run --rm -v /:/host alpine:3.20 sh -c "rm -rf '/host$PWD'"
-          fi
+        run: docker compose down -v --remove-orphans
